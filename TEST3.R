@@ -3,7 +3,6 @@
 library(RSQLite)
 library(dplyr)
 library(ggplot2)
-library(tidyverse)
 library(rvest)
 library(lubridate)
 library(readr)
