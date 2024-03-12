@@ -8,6 +8,8 @@
 
 
 #Join Customers and Orders_items
+connection <- RSQLite::dbConnect(RSQLite::SQLite(),"ecomm.db")
+
 joint_cust_query <- "SELECT * FROM Customers CROSS JOIN Order_items"
 cust_order_items <- DBI::dbGetQuery(connection, joint_cust_query)
 
