@@ -3,13 +3,7 @@
 library(RSQLite)
 library(dplyr)
 library(ggplot2)
-library(rvest)
-library(lubridate)
-library(readr)
 library(DBI)
-library(ggmap)
-library(leaflet)
-library(leaflet.extras)
 library(plotly)
 
 
