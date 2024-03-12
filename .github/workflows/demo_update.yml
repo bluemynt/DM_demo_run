@@ -27,19 +27,19 @@ jobs:
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
           Rscript -e 'install.packages(c("ggplot2"))'
-#      - name: Execute R script
-#        run: |
-#          Rscript R/regression_plot.R
-#      - name: Add files
-#        run: |
-#          git config --global user.email "ananthu192@gmail.com"
-#          git config --global user.name "ananthu192"
-#          git add --all figures/
-#      - name: Commit files
-#        run: |
-#          git commit -m "Add regression plot figure"
-#      - name: Push changes
-#        uses: ad-m/github-push-action@v0.6.0
-#        with:
-#            github_token: ${{ secrets.GITHUB_TOKEN }}
-#            branch: main
+      - name: Execute R script
+        run: |
+          Rscript R/Test2.R
+      - name: Add files
+        run: |
+          git config --global user.email "ananthu192@gmail.com"
+          git config --global user.name "ananthu192"
+          git add --all figures/
+      - name: Commit files
+        run: |
+          git commit -m "Add customer plot figure"
+      - name: Push changes
+        uses: ad-m/github-push-action@v0.6.0
+        with:
+            github_token: ${{ secrets.GITHUB_TOKEN }}
+            branch: main
