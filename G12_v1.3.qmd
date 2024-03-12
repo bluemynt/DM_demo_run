@@ -415,7 +415,7 @@ query <- "SELECT a.shipment_city AS City, b.Latitude AS shipment_latitude, b.Lon
 FROM shipments a
 JOIN maps b ON a.shipment_city = b.Town;"
 
-shipment_df <- dbGetQuery(connection, query)
+shipment_df <- DBI::dbGetQuery(connection, query)
 ```
 
 ```{r}
@@ -445,7 +445,7 @@ Order Analysis
 query <- "SELECT order_id AS Orders, order_date AS Date_Ordered
 FROM orders;"
 
-order_df <- dbGetQuery(connection, query)
+order_df <- DBI::dbGetQuery(connection, query)
 
 # Converting date format and creating a new variable for month
 order_df <- mutate(order_df, Date_Ordered = as.POSIXct(order_df$Date_Ordered, origin = "1970-01-01", tz = "UTC"),
@@ -469,7 +469,7 @@ Advertisement Analysis
 query <- "SELECT order_id AS Orders, advertisement_id AS Ads_ID, order_item_quantity AS Quantity_Ordered
 FROM order_items;"
 
-order_items_df <- dbGetQuery(connection, query)
+order_items_df <- DBI::dbGetQuery(connection, query)
 
 # Creating new column for presence of Advertisement
 order_items_df <- mutate(order_items_df, Ads_Present = ifelse(is.na(Ads_ID), "No Advertisement", "Advertisement Present"))
@@ -496,7 +496,7 @@ FROM Products a
 JOIN order_items c ON a.product_id = c.product_id
 JOIN Orders b ON b.order_id = c.order_id;"
 
-categories_df <- dbGetQuery(connection, query)
+categories_df <- DBI::dbGetQuery(connection, query)
 
 # Manipulating date, creating month column and counting number of times category was ordered in a month
 categories_df <- mutate(categories_df, Order_Date = as.POSIXct(categories_df$Order_Date, origin = "1970-01-01", tz = "UTC"),

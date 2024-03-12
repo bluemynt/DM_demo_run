@@ -7,7 +7,7 @@ FROM Products a
 JOIN order_items c ON a.product_id = c.product_id
 JOIN Orders b ON b.order_id = c.order_id;"
 
-categories_df <- dbGetQuery(connection, query)
+categories_df <- DBI::dbGetQuery(connection, query)
 
 # Manipulating date, creating month column and counting number of times category was ordered in a month
 categories_df <- mutate(categories_df, Order_Date = as.POSIXct(categories_df$Order_Date, origin = "1970-01-01", tz = "UTC"),
