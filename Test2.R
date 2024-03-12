@@ -6,6 +6,7 @@
 
 #Firstly, join Customers and Orders tables for furthur analysis
 
+connection <- RSQLite::dbConnect(RSQLite::SQLite(),"ecomm.db")
 
 #Join Customers and Orders_items
 joint_cust_query <- "SELECT * FROM Customers CROSS JOIN Order_items"
