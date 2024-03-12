@@ -29,7 +29,7 @@ jobs:
           Rscript -e 'install.packages(c("ggplot2"))'
       - name: Execute R script
         run: |
-          Rscript R/Test2.R
+          Rscript Test2.R
       - name: Add files
         run: |
           git config --global user.email "ananthu192@gmail.com"
