@@ -1,5 +1,19 @@
 # Selecting Product ID, Category, and Order Date
 
+library(RSQLite)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+library(lubridate)
+library(readr)
+library(DBI)
+library(ggmap)
+library(leaflet)
+library(leaflet.extras)
+library(plotly)
+
+
 connection <- RSQLite::dbConnect(RSQLite::SQLite(),"ecomm.db")
 
 query <- "SELECT a.product_id AS Product_ID, a.products_category AS Category, b.order_date AS Order_Date
