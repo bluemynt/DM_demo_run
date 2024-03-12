@@ -22,6 +22,9 @@ install.packages("lubridate")
 install.packages("readr")
 install.packages("plotly")
 install.packages("DBI")
+install.packages("ggmap")
+install.packages("leaflet")
+install.packages("leaflet.extras")
 ```
 
 ```{r}
@@ -36,6 +39,10 @@ library(rvest)
 library(lubridate)
 library(readr)
 library(DBI)
+library(ggmap)
+library(leaflet)
+library(leaflet.extras)
+library(plotly)
 
 ```
 
@@ -229,19 +236,20 @@ CREATE TABLE Shipments (
 
 ```{r dataloading, message=FALSE, warning=FALSE}
 #Import the data
-Advertisements <- readr::read_csv("less_than_1000/Advertisements.csv")
-Customers <- readr::read_csv("less_than_1000/Customers.csv")
-Order_items <- readr::read_csv("less_than_1000/Order_items.csv")
-Orders <- readr::read_csv("less_than_1000/Orders.csv")
-Payments <- readr::read_csv("less_than_1000/Payments.csv")
-Products <- readr::read_csv("less_than_1000/Products.csv")
-Shipments <- readr::read_csv("less_than_1000/Shipments.csv")
-Suppliers <- readr::read_csv("less_than_1000/Suppliers.csv")
+Advertisements <- readr::read_csv("dataset/Advertisements.csv")
+Customers <- readr::read_csv("dataset/Customers.csv")
+Order_items <- readr::read_csv("dataset/Order_items.csv")
+Orders <- readr::read_csv("dataset/Orders.csv")
+Payments <- readr::read_csv("dataset/Payments.csv")
+Products <- readr::read_csv("dataset/Products.csv")
+Shipments <- readr::read_csv("dataset/Shipments.csv")
+Suppliers <- readr::read_csv("dataset/Suppliers.csv")
+map <- readr:: read_csv("Postcode districts.csv")
 ```
 
 ```{r writebacktodb}
 #Write data into the database
-#RSQLite::dbWriteTable(connection,"Advertisements",Advertisements,append=TRUE)
+RSQLite::dbWriteTable(connection,"Advertisements",Advertisements,append=TRUE)
 RSQLite::dbWriteTable(connection,"Customers",Customers,append=TRUE)
 RSQLite::dbWriteTable(connection,"Order_items",Order_items,append=TRUE)
 RSQLite::dbWriteTable(connection,"Orders",Orders,append=TRUE)
@@ -249,16 +257,17 @@ RSQLite::dbWriteTable(connection,"Payments",Payments,append=TRUE)
 RSQLite::dbWriteTable(connection,"Products",Products,append=TRUE)
 RSQLite::dbWriteTable(connection,"Shipments",Shipments,append=TRUE)
 RSQLite::dbWriteTable(connection,"Suppliers",Suppliers,append=TRUE)
+RSQLite::dbWriteTable(connection,"maps",map,append=TRUE)
 ```
 
 -   Data Integrity Check for no. of rows and columns for each table
 
 ```{r loop,message=FALSE,warning=FALSE,attr.source='.numberLines'}
 
-all_files <- list.files("less_than_1000/")
+all_files <- list.files("dataset/")
 
 for (variable in all_files) {
-  this_filepath <- paste0("less_than_1000/",variable)
+  this_filepath <- paste0("dataset/",variable)
   this_file_contents <- readr::read_csv(this_filepath)
   
   number_of_rows <- nrow(this_file_contents)
@@ -279,7 +288,7 @@ for (variable in all_files) {
 #automate uni-testing #use this instead
 
 for (variable in all_files) {
-  this_filepath <- paste0("less_than_1000/",variable)
+  this_filepath <- paste0("dataset/",variable)
   this_file_contents <- readr::read_csv(this_filepath)
   number_of_rows <- nrow(this_file_contents)
   
@@ -295,6 +304,10 @@ All first column of each file is primary
 #Disconnect Database
 #
 ```
+
+# Part 3
+
+3.1
 
 3.2 Import update data and show workflows in Github (Just first pat : Before update graph)
 
@@ -361,20 +374,20 @@ Analysis of the platform growth
 
 ```{r}
 #Join Orders and Orders_items
-joint_order_query <- "SELECT * FROM Orders CROSS JOIN Order_items"
-order_order_items <- DBI::dbGetQuery(connection, joint_order_query)
+#joint_order_query <- "SELECT * FROM Orders CROSS JOIN Order_items"
+#order_order_items <- DBI::dbGetQuery(connection, joint_order_query)
 
-order_order_items$order_date <- as.POSIXct(order_order_items$order_date) #To maintain the data structure of order_date table is DATE after joined table 
+#order_order_items$order_date <- as.POSIXct(order_order_items$order_date) #To maintain the data structure of #order_date table is DATE after joined table 
 
 ```
 
 ```{r}
-order_analysis <- order_order_items %>%
-  mutate(
-    order_date = as.POSIXct(order_date, format = "%d/%m/%Y %H:%M:%S"), # Convert to POSIXct
-    year = lubridate::year(order_date),  # Extract year
-    month = lubridate::month(order_date) # Extract month
-  )
+#order_analysis <- order_order_items %>%
+#  mutate(
+ #   order_date = as.POSIXct(order_date, format = "%d/%m/%Y %H:%M:%S"), # Convert to POSIXct
+  #  year = lubridate::year(order_date),  # Extract year
+   # month = lubridate::month(order_date) # Extract month
+  #)
 
 
 ```
@@ -383,7 +396,7 @@ order_analysis <- order_order_items %>%
 
 ```{r}
 #order_item_quantity * order_item_unit_price
-order_order_items <- order_order_items %>% mutate(order_value = order_item_quantity * order_item_unit_price) 
+# order_order_items <- order_order_items %>% mutate(order_value = order_item_quantity * order_item_unit_price) 
 
 
 ```
@@ -392,8 +405,108 @@ order_order_items <- order_order_items %>% mutate(order_value = order_item_quant
 
     1.  Analyse Suppliers Revenue growth (assumption: Total revenue without deducting fees from e-commerce platform)
 
+Payment method
+
+Shipment Analysis
+
 ```{r}
+#Dataframe for shipment city, longitude and latitude from maps csv
+query <- "SELECT a.shipment_city AS City, b.Latitude AS shipment_latitude, b.Longitude AS shipment_longitude
+FROM shipments a
+JOIN maps b ON a.shipment_city = b.Town;"
+
+shipment_df <- dbGetQuery(connection, query)
+```
+
+```{r}
+# Input longitude and latitude details
+locations <- data.frame(
+  lon = shipment_df$shipment_longitude,
+  lat = shipment_df$shipment_latitude
+)
+
+# Create a UK map showing where shipments headed
+map <- leaflet(locations) %>%
+  addTiles() %>%
+  addHeatmap(
+    lng = ~lon,
+    lat = ~lat,
+    blur = 0,
+    max= 4
+ )
+map
 
 ```
 
-Payment method
+Order Analysis
+
+```{r}
+# Selecting order_id and date of order placed
+query <- "SELECT order_id AS Orders, order_date AS Date_Ordered
+FROM orders;"
+
+order_df <- dbGetQuery(connection, query)
+
+# Converting date format and creating a new variable for month
+order_df <- mutate(order_df, Date_Ordered = as.POSIXct(order_df$Date_Ordered, origin = "1970-01-01", tz = "UTC"),
+                   Month = format(Date_Ordered, "%b"))
+
+# Ordering months
+order_df$Month <- factor(order_df$Month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+# Plotting number of orders per month
+fig <- ggplot(order_df, aes(x = Month)) +
+  geom_bar(fill = "skyblue", color = "black") +
+  labs(title = "Orders Per Month", x = "Month", y = "Count")
+
+ggplotly(fig)
+```
+
+Advertisement Analysis
+
+```{r}
+# Selecting all orders placed
+query <- "SELECT order_id AS Orders, advertisement_id AS Ads_ID, order_item_quantity AS Quantity_Ordered
+FROM order_items;"
+
+order_items_df <- dbGetQuery(connection, query)
+
+# Creating new column for presence of Advertisement
+order_items_df <- mutate(order_items_df, Ads_Present = ifelse(is.na(Ads_ID), "No Advertisement", "Advertisement Present"))
+
+# Factorising Ads Present column
+order_items_df$Ads_Present <- as.factor(order_items_df$Ads_Present)
+
+# Plot showing the differnce in orders placed with and without advertisements
+fig <- ggplot(order_items_df, aes(x = Ads_Present, fill = Ads_Present)) +
+  geom_bar() +
+  labs(title = "Distribution of Ads Presence", x = "Advertisement", y = "Number of Sales") +
+  theme(legend.position = "none")
+
+ggplotly(fig)
+
+```
+
+Categories Analysis
+
+```{r}
+# Selecting Product ID, Category, and Order Date
+query <- "SELECT a.product_id AS Product_ID, a.products_category AS Category, b.order_date AS Order_Date
+FROM Products a
+JOIN order_items c ON a.product_id = c.product_id
+JOIN Orders b ON b.order_id = c.order_id;"
+
+categories_df <- dbGetQuery(connection, query)
+
+# Manipulating date, creating month column and counting number of times category was ordered in a month
+categories_df <- mutate(categories_df, Order_Date = as.POSIXct(categories_df$Order_Date, origin = "1970-01-01", tz = "UTC"),
+                   Month = format(Order_Date, "%b")) %>% select(Category, Month) %>% count(Category, Month, name = "Count")
+
+# Ordering months
+categories_df$Month <- factor(categories_df$Month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
+
+# Plot showing number of orders placed each month across all categories
+fig <- ggplot(categories_df, aes(x = Month, y = Count, group=Category, color=Category)) + geom_point() +geom_line()
+ggplotly(fig)
+
+```
