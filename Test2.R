@@ -39,3 +39,10 @@ cust_order_plot <- plot_ly(data = cust_analysis, x = ~cust_age_range, y = ~order
 
 # View the result
 cust_order_plot
+
+this_filename_date <- as.character(Sys.Date())
+# format the Sys.time() to show only hours and minutes 
+this_filename_time <- as.character(format(Sys.time(), format = "%H_%M"))
+ggsave(paste0("figures/cust_order_plot_",
+              this_filename_date,"_",
+              this_filename_time,".png"))
