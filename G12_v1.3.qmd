@@ -1,0 +1,399 @@
+---
+title: "Report_G12"
+format: pdf
+editor: visual
+---
+
+\*--Coverpage----------------------------------\*\*
+
+\newpage
+
+## Introduction
+
+This report simulate a real-world e-commerce data environment where engaging end-to-end data management. The report is composed of 4 major tasks from database design to data analysis.
+
+```{r}
+install.packages("RSQLite")
+install.packages("dplyr")
+install.packages("ggplot2")
+install.packages("tidyverse")
+install.packages("rvest")
+install.packages("lubridate")
+install.packages("readr")
+install.packages("plotly")
+install.packages("DBI")
+```
+
+```{r}
+#| echo: false
+knitr::opts_chunk$set(eva1 = FALSE)
+#Package to run SQL and R
+library(RSQLite)
+library(dplyr)
+library(ggplot2)
+library(tidyverse)
+library(rvest)
+library(lubridate)
+library(readr)
+library(DBI)
+
+```
+
+## Part 1: Database Design and Implementation
+
+### 1.1 E-R Diagram Design
+
+*\[Attach image or function in Quarto https://quarto.org/docs/authoring/diagrams.html\]*
+
+Our E-R Diagram that explains the e-commerce platform is composed of 7 entities which could be explained relationship as churns below:
+
+1.  **Customers:** The diagram begins with the Customer entity which has a unique customer ID as its primary key. The information stored as attributes in this entity would relate to the customer's personal details, address, and account information (e.g gender, zipcode, account type).
+
+2.  **Orders:** The Customer entity shares a many to many (M:N) relationship with Products entity through the relationship Orders. As such, Orders contains the primary key "order_id" with the attributes order status and order date.
+
+3.  **Products:** The M:N relationship between customers and products is assumed as many customers can order one product and vice versa. The product entity contains attributes that describe the product (dimensions, description etc.).
+
+4.  **Suppliers:**Supplier sells Products on the ecommerce platform with a one to many (1:N) relationship as it is assumed that each supplier may sells multiple different products but the products are unique across suppliers. Attributes recorded pertain to the account information, contact, and name of the supplier.
+
+5.  
+
+### 1.2 SQL Database Schema Creation
+
+To translate the E-R Diagram in Figure xx into functional SQL database schema, we have created tables that consist of attributes and their data types below:
+
+```{r defineconnection}
+#Define connection to connect R with the database using package RSQLite. We defined our e-commerce database as "ecomm.db"
+connection <- RSQLite::dbConnect(RSQLite::SQLite(),"ecomm.db")
+```
+
+After that, we define create tables for each entity and relationship in below sections:
+
+1.  Customers
+
+```{sql connection=connection}
+CREATE TABLE Customers (
+    cust_id INT PRIMARY KEY,
+    cust_contact VARCHAR(11) NOT NULL CHECK (cust_contact NOT LIKE '%[^0-9]%'),
+    cust_email VARCHAR(100) NOT NULL UNIQUE,
+    cust_dob DATE CHECK (cust_dob <= CURRENT_DATE),
+    cust_gender CHAR(1) CHECK (cust_gender IN ('M', 'F', 'O')),
+    cust_fname VARCHAR(100) NOT NULL,
+    cust_lname VARCHAR(100),
+    cust_city VARCHAR(100) NOT NULL,
+    cust_postcode VARCHAR(100) NOT NULL,
+    cust_address VARCHAR(100) NOT NULL,
+    cust_active BOOLEAN NOT NULL,
+    cust_referral_id INT,
+    cust_type VARCHAR(100) NOT NULL,
+    cust_date_created DATE CHECK (cust_date_created <= CURRENT_DATE)
+);
+
+
+```
+
+2.  Orders
+
+```{sql connection=connection}
+CREATE TABLE Orders (
+  order_id INT PRIMARY KEY,
+  cust_id INT NOT NULL,
+  order_status VARCHAR (50) NOT NULL CHECK (order_status IN ('Pending', 'Processing', 'Shipped', 'Delivered', 'Cancelled')),
+  order_date DATE,
+  FOREIGN KEY('cust_id')
+    REFERENCES Customers('cust_id')
+  );
+```
+
+3.  Suppliers
+
+```{sql connection=connection}
+CREATE TABLE Suppliers (
+  supplier_id INT PRIMARY KEY,
+  supplier_name VARCHAR(100) NOT NULL,
+  supplier_city VARCHAR(100) NOT NULL,
+  supplier_address VARCHAR(100) NOT NULL,
+  supplier_postcode VARCHAR(10) NOT NULL,
+  supplier_email VARCHAR(100) NOT NULL UNIQUE CHECK (supplier_email LIKE '%@%.%'),
+  supplier_contact VARCHAR(11) NOT NULL CHECK (supplier_contact NOT LIKE '%[^0-9]%')
+);
+
+```
+
+4.  Products
+
+```{sql connection=connection}
+CREATE TABLE Products (
+  product_id INT PRIMARY KEY,
+  supplier_id INT NOT NULL,
+  products_category VARCHAR(100) NOT NULL,
+  product_name VARCHAR(100) NOT NULL,
+  product_description TEXT,
+  product_price DECIMAL (10,2) NOT NULL,
+  product_length DECIMAL (10,2) NOT NULL,
+  product_height DECIMAL (10,2) NOT NULL,
+  product_width DECIMAL (10,2) NOT NULL,
+  product_weight DECIMAL (10,2) NOT NULL,
+  FOREIGN KEY('supplier_id')
+    REFERENCES Suppliers('supplier_id')
+  );
+```
+
+5.  Advertisements
+
+```{sql connection=connection}
+CREATE TABLE Advertisements (
+  ads_id INT PRIMARY KEY,
+  product_id INT NOT NULL,
+  supplier_id INT NOT NULL,
+  ads_details TEXT,
+  ads_name VARCHAR (255) NOT NULL,
+  product_discount DECIMAL(3,2) CHECK (product_discount >= 0 AND product_discount <= 100),
+  discount_price DECIMAL (10,2) NOT NULL,
+  FOREIGN KEY('product_id')
+    REFERENCES Products('product_id'),
+  FOREIGN KEY('supplier_id')
+    REFERENCES Suppliers('supplier_id')
+    
+  );
+```
+
+6.Payments
+
+```{sql connection=connection}
+CREATE TABLE Payments (
+  payment_id INT PRIMARY KEY,
+  cust_id INT NOT NULL,
+  order_item_id INT NOT NULL,
+  payment_status VARCHAR(50) NOT NULL CHECK (payment_status IN ('Pending', 'Processing', 'Completed', 'Failed', 'Cancelled', 'Refund Completed', 'Refund Processing', 'Refund Failed')),
+  payment_method VARCHAR(50) NOT NULL CHECK (payment_method IN ('Credit Card', 'Debit Card', 'PayPal', 'Bank Transfer')),
+  FOREIGN KEY('cust_id')
+    REFERENCES Customers('cust_id'),
+  FOREIGN KEY('order_item_id')
+    REFERENCES Order_items('order_item_id')
+  );
+```
+
+7.  Order items
+
+```{sql connection=connection}
+CREATE TABLE Order_items (
+  order_item_id INT PRIMARY KEY,
+  order_id INT NOT NULL,
+  product_id INT,
+  advertisement_id INT,
+  order_item_quantity INT NOT NULL,
+  order_item_unit_price DECIMAL (10,2) NOT NULL,
+  FOREIGN KEY('order_id')
+    REFERENCES Orders('order_id'),
+  FOREIGN KEY('product_id')
+    REFERENCES Products('product_id'),
+  FOREIGN KEY('advertisement_id')
+    REFERENCES Advertisements('advertisement_id')
+    
+  );
+```
+
+8.  Shipments
+
+```{sql connection=connection}
+CREATE TABLE Shipments (
+  shipment_id INT PRIMARY KEY,
+  order_id INT NOT NULL,
+  cust_id INT NOT NULL,
+  shipment_date DATE,
+  shipment_company VARCHAR(100) NOT NULL,
+  shipment_postcode VARCHAR(100) NOT NULL,
+  shipment_city VARCHAR(100) NOT NULL,
+  shipment_address VARCHAR(100) NOT NULL,
+  shipment_status VARCHAR (20) CHECK (shipment_status IN ('Pending', 'In Transit', 'Delivered', 'Cancelled')),
+  FOREIGN KEY('order_id')
+    REFERENCES Orders('order_id'),
+  FOREIGN KEY('cust_id')
+    REFERENCES Customers('cust_id')
+  );
+```
+
+## Part 2: Data Generation and Management
+
+### 2.1 Synthetic Data Generation
+
+-   Generate data with Python (put Python code in appx?) -put python in appx
+
+```{python}
+
+```
+
+<!-- -->
+
+### 2.2 Data Import and Quality Assurance
+
+```{r dataloading, message=FALSE, warning=FALSE}
+#Import the data
+Advertisements <- readr::read_csv("less_than_1000/Advertisements.csv")
+Customers <- readr::read_csv("less_than_1000/Customers.csv")
+Order_items <- readr::read_csv("less_than_1000/Order_items.csv")
+Orders <- readr::read_csv("less_than_1000/Orders.csv")
+Payments <- readr::read_csv("less_than_1000/Payments.csv")
+Products <- readr::read_csv("less_than_1000/Products.csv")
+Shipments <- readr::read_csv("less_than_1000/Shipments.csv")
+Suppliers <- readr::read_csv("less_than_1000/Suppliers.csv")
+```
+
+```{r writebacktodb}
+#Write data into the database
+#RSQLite::dbWriteTable(connection,"Advertisements",Advertisements,append=TRUE)
+RSQLite::dbWriteTable(connection,"Customers",Customers,append=TRUE)
+RSQLite::dbWriteTable(connection,"Order_items",Order_items,append=TRUE)
+RSQLite::dbWriteTable(connection,"Orders",Orders,append=TRUE)
+RSQLite::dbWriteTable(connection,"Payments",Payments,append=TRUE)
+RSQLite::dbWriteTable(connection,"Products",Products,append=TRUE)
+RSQLite::dbWriteTable(connection,"Shipments",Shipments,append=TRUE)
+RSQLite::dbWriteTable(connection,"Suppliers",Suppliers,append=TRUE)
+```
+
+-   Data Integrity Check for no. of rows and columns for each table
+
+```{r loop,message=FALSE,warning=FALSE,attr.source='.numberLines'}
+
+all_files <- list.files("less_than_1000/")
+
+for (variable in all_files) {
+  this_filepath <- paste0("less_than_1000/",variable)
+  this_file_contents <- readr::read_csv(this_filepath)
+  
+  number_of_rows <- nrow(this_file_contents)
+  number_of_columns <- ncol(this_file_contents)
+  
+  print(paste0("The file: ",variable,
+              " has: ",
+              format(number_of_rows,big.mark = ","),
+              " rows and ",
+              number_of_columns," columns"))
+}
+
+```
+
+-   Check if the first column of each file is a primary key
+
+```{r checkprimary,message=FALSE,warning=FALSE,attr.source='.numberLines'}
+#automate uni-testing #use this instead
+
+for (variable in all_files) {
+  this_filepath <- paste0("less_than_1000/",variable)
+  this_file_contents <- readr::read_csv(this_filepath)
+  number_of_rows <- nrow(this_file_contents)
+  
+  print(paste0("Checking for: ",variable))
+  
+  print(paste0(" is ",nrow(unique(this_file_contents[,1]))==number_of_rows))
+}
+```
+
+All first column of each file is primary
+
+```{r}
+#Disconnect Database
+#
+```
+
+3.2 Import update data and show workflows in Github (Just first pat : Before update graph)
+
+```{r}
+#Code to append data
+
+
+```
+
+# Part 4
+
+-   Customer Analysis
+
+    1.  Analyse Customers based on demographic information
+
+    Firstly, join Customers and Orders tables for furthur analysis
+
+```{r}
+#Join Customers and Orders_items
+joint_cust_query <- "SELECT * FROM Customers CROSS JOIN Order_items"
+cust_order_items <- DBI::dbGetQuery(connection, joint_cust_query)
+
+cust_order_items$cust_dob <- as.Date(cust_order_items$cust_dob) #To maintain the data structure of cust_dob table is DATE after joined table 
+
+```
+
+```{r}
+cust_analysis <- cust_order_items %>%
+               mutate(cust_yob = year(cust_dob),
+                      cust_age = 2024 - cust_yob)
+
+cust_group <- cust_analysis %>% 
+              group_by(age_range = cut(cust_age, breaks = c(0, 20, 30, 40, 50, Inf), labels = c("Under 20", "21-30", "31-40", "41-50", "51+"))) %>%
+              summarize(total_customers = n(),
+                        average_age = mean(cust_age))
+
+(cust_group)
+```
+
+```{r}
+#Summarise Orders quantity based on Orders
+# Define custom age ranges
+age_ranges <- c("Under 20", "21-30", "31-40", "41-50", "51+")
+
+# Convert cust_age to factor with custom age ranges
+cust_analysis$cust_age_range <- cut(cust_analysis$cust_age, breaks = c(0, 20, 30, 40, 50, Inf), labels = age_ranges, right = FALSE)
+
+# Plot the data as a bar plot
+cust_order_plot <- plot_ly(data = cust_analysis, x = ~cust_age_range, y = ~order_item_quantity, type = 'bar', marker = list(color = '#1f77b4')) %>%
+  layout(xaxis = list(title = "Age Range"),
+         yaxis = list(title = "Total Order Items Quantity"),
+         title = "Total Order Items Quantity by Age Range")
+
+
+# View the result
+cust_order_plot
+```
+
+-   E-commerce overall revenue growth
+-   From Order_items --\> order_item_quantity \* order_item_unit_price
+-   Growth by orders - order_date (link with order id)
+
+Analysis of the platform growth
+
+```{r}
+#Join Orders and Orders_items
+joint_order_query <- "SELECT * FROM Orders CROSS JOIN Order_items"
+order_order_items <- DBI::dbGetQuery(connection, joint_order_query)
+
+order_order_items$order_date <- as.POSIXct(order_order_items$order_date) #To maintain the data structure of order_date table is DATE after joined table 
+
+```
+
+```{r}
+order_analysis <- order_order_items %>%
+  mutate(
+    order_date = as.POSIXct(order_date, format = "%d/%m/%Y %H:%M:%S"), # Convert to POSIXct
+    year = lubridate::year(order_date),  # Extract year
+    month = lubridate::month(order_date) # Extract month
+  )
+
+
+```
+
+\*Remark-cannot transform extract date of the order
+
+```{r}
+#order_item_quantity * order_item_unit_price
+order_order_items <- order_order_items %>% mutate(order_value = order_item_quantity * order_item_unit_price) 
+
+
+```
+
+-   Supplier Analysis
+
+    1.  Analyse Suppliers Revenue growth (assumption: Total revenue without deducting fees from e-commerce platform)
+
+```{r}
+
+```
+
+Payment method
