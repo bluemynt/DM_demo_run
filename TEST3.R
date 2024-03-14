@@ -1,5 +1,13 @@
 # Selecting Product ID, Category, and Order Date
 
+library(RSQLite)
+library(dplyr)
+library(ggplot2)
+library(DBI)
+
+
+# Selecting Product ID, Category, and Order Date
+
 connection <- RSQLite::dbConnect(RSQLite::SQLite(),"ecomm.db")
 
 cat_query <- "SELECT a.product_id AS Product_ID, a.products_category AS Category, b.order_date AS Order_Date
@@ -18,7 +26,9 @@ categories_df$Month <- factor(categories_df$Month, levels = c("Jan", "Feb", "Mar
 
 # Plot showing number of orders placed each month across all categories
 fig_cat <- ggplot(categories_df, aes(x = Month, y = Count, group=Category, color=Category)) + geom_point() +geom_line()
+
 ggplot(fig_cat)
+
 
 this_filename_date <- as.character(Sys.Date())
 # format the Sys.time() to show only hours and minutes 
