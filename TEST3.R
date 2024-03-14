@@ -2,7 +2,7 @@
 
 connection <- RSQLite::dbConnect(RSQLite::SQLite(),"ecomm.db")
 
-query <- "SELECT a.product_id AS Product_ID, a.products_category AS Category, b.order_date AS Order_Date
+cat_query <- "SELECT a.product_id AS Product_ID, a.products_category AS Category, b.order_date AS Order_Date
 FROM Products a
 JOIN order_items c ON a.product_id = c.product_id
 JOIN Orders b ON b.order_id = c.order_id;"
@@ -17,7 +17,7 @@ categories_df <- mutate(categories_df, Order_Date = as.POSIXct(categories_df$Ord
 categories_df$Month <- factor(categories_df$Month, levels = c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"))
 
 # Plot showing number of orders placed each month across all categories
-fig <- ggplot(categories_df, aes(x = Month, y = Count, group=Category, color=Category)) + geom_point() +geom_line()
+fig_cat <- ggplot(categories_df, aes(x = Month, y = Count, group=Category, color=Category)) + geom_point() +geom_line()
 ggplotly(fig)
 
 this_filename_date <- as.character(Sys.Date())
@@ -25,4 +25,4 @@ this_filename_date <- as.character(Sys.Date())
 this_filename_time <- as.character(format(Sys.time(), format = "%H_%M"))
 ggsave(paste0("figures/category_plot",
               this_filename_date,"_",
-              this_filename_time,".png"))
+              this_filename_time,".png"), plot = fig_cat)
