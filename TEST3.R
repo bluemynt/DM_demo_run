@@ -32,4 +32,4 @@ this_filename_date <- as.character(Sys.Date())
 this_filename_time <- as.character(format(Sys.time(), format = "%H_%M"))
 ggsave(paste0("figures/category_plot",
               this_filename_date,"_",
-              this_filename_time,".png"))
+              this_filename_time,".png"), plot = fig_cat)
