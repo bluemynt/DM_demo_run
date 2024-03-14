@@ -27,8 +27,6 @@ categories_df$Month <- factor(categories_df$Month, levels = c("Jan", "Feb", "Mar
 # Plot showing number of orders placed each month across all categories
 fig_cat <- ggplot(categories_df, aes(x = Month, y = Count, group=Category, color=Category)) + geom_point() +geom_line()
 
-ggplot(fig_cat)
-
 
 this_filename_date <- as.character(Sys.Date())
 # format the Sys.time() to show only hours and minutes 
